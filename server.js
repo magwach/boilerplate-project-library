@@ -1,13 +1,14 @@
 'use strict';
 
-const express     = require('express');
-const bodyParser  = require('body-parser');
-const cors        = require('cors');
-require('dotenv').config();
-
-const apiRoutes         = require('./routes/api.js');
-const fccTestingRoutes  = require('./routes/fcctesting.js');
-const runner            = require('./test-runner');
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import dotenv from 'dotenv'; 
+dotenv.config();
+import mongoose from 'mongoose';
+import apiRoutes from './routes/api.js';
+import fccTestingRoutes from './routes/fcctesting.js';
+import emitter from './test-runner.js';
 
 const app = express();
 
@@ -17,6 +18,21 @@ app.use(cors({origin: '*'})); //USED FOR FCC TESTING PURPOSES ONLY!
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+//Mongoose connection
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log('Connected to MongoDB!'))
+    .catch(err => console.error('Connection error:', err));
+
+  
+// Book schema
+const BookSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  comments: { type: [String], default: [] }
+});
+
+// Book model
+const Book = mongoose.model('Book', BookSchema);
 
 //Index page (static HTML)
 app.route('/')
@@ -28,7 +44,7 @@ app.route('/')
 fccTestingRoutes(app);
 
 //Routing for API 
-apiRoutes(app);  
+apiRoutes(app, Book);  
     
 //404 Not Found Middleware
 app.use(function(req, res, next) {
@@ -44,7 +60,7 @@ const listener = app.listen(process.env.PORT || 3000, function () {
     console.log('Running Tests...');
     setTimeout(function () {
       try {
-        runner.run();
+        emitter.run();
       } catch(e) {
           console.log('Tests are not valid:');
           console.error(e);
@@ -53,4 +69,4 @@ const listener = app.listen(process.env.PORT || 3000, function () {
   }
 });
 
-module.exports = app; //for unit/functional testing
+export default app; //for unit/functional testing
